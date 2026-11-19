@@ -1,0 +1,19 @@
+# Jogvédett vagy nagy fájlok – soha ne kerüljenek a repóba
+refs/
+render/
+edit/
+data/external/
+
+# QGIS ideiglenes fájlok
+*.gpkg-wal
+*.gpkg-shm
+*.qgz~
+
+# Blender mentési másolatok és generált jelenet
+*.blend1
+*.blend2
+blender/mezotur_generated.blend
+
+# Python
+__pycache__/
+*.pyc
