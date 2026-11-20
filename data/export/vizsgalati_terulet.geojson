@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "vizsgalati_terulet",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::23700" } },
+"xy_coordinate_resolution": 0.01,
+"features": [
+{"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[765987.79,183608.4],[765905.49,187829.98],[772729.25,187966.94],[772816.41,183745.46],[765987.79,183608.4]]]}}
+]
+}
