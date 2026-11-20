@@ -10,6 +10,7 @@ OUTPUT_BLEND = ROOT / "blender" / "mezotur_generated.blend"
 FILES = {
     "terulet": EXPORT_DIR / "vizsgalati_terulet.geojson",
     "epuletek": EXPORT_DIR / "overture_epuletek.geojson",
+    "kezi_epuletek": EXPORT_DIR / "kezi_epuletek.geojson",     # opcionális, kézzel rajzolt
     "magassag_zonak": EXPORT_DIR / "magassag_zonak.geojson",   # opcionális, kézi felülírás
     "vizfeluletek": EXPORT_DIR / "osm_vizfeluletek.geojson",
     "vizfolyasok": EXPORT_DIR / "osm_vizfolyasok.geojson",

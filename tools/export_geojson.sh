@@ -29,6 +29,6 @@ for name in overture_epuletek osm_utak osm_vizfolyasok osm_vizfeluletek \
 done
 
 # Kézzel rajzolt rétegek a mezotur.gpkg-ből
-for layer in vizsgalati_terulet magassag_zonak beepites_foltok; do
+for layer in vizsgalati_terulet magassag_zonak kezi_epuletek beepites_foltok; do
   export_layer qgis/mezotur.gpkg "$layer" "$layer"
 done

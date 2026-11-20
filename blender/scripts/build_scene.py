@@ -85,7 +85,7 @@ def main():
 
     # Épületek – egyetlen mesh, laponként building_id / height / height_src attribútummal
     zones = heights.load_zones(load_optional("magassag_zonak"), origin)
-    epuletek = geo.load_features(config.FILES["epuletek"])
+    epuletek = geo.load_features(config.FILES["epuletek"]) + load_optional("kezi_epuletek")
     v, f, attrs, count, stats = meshgen.buildings(epuletek, origin, zones, config, tessellate_polygon)
     scene.mesh_object("Epuletek", v, f, mat["epulet"], attrs)
     print(f"Épületek: {count} ({len(v)} csúcs, {len(f)} lap)")

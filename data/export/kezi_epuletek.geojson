@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "kezi_epuletek",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::23700" } },
+"xy_coordinate_resolution": 0.01,
+"features": [
+
+]
+}

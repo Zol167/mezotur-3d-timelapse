@@ -1,8 +1,9 @@
 """Épületmagasság becslése, ha nincs mért adat.
 
 Sorrend (az első, ami ad értéket, nyer):
-  1. kézi zóna a QGIS `magassag_zonak` rétegéből (emelet vagy magassag mező)
-  2. mért adat: Overture `height`, majd `num_floors`
+  1. kézi zóna a QGIS `magassag_zonak` rétegéből (magassag vagy emelet mező,
+     min_terulet alatt nem érvényes)
+  2. megadott adat: Overture `height` / kézi réteg `magassag`, majd emeletszám
   3. épülettípus (class / building mező) a config.CLASS_HEIGHTS alapján
   4. alapterület a config.AREA_HEIGHTS alapján
 Végül egy kis, helyhez kötött véletlen eltérés, hogy ne legyen minden ház egyforma.
@@ -25,7 +26,11 @@ def _num(v):
 
 
 def load_zones(features, origin):
-    """Zónák: (gyűrű, magasság) párok, a kisebb területű zóna előbb (az nyer)."""
+    """Zónák: (gyűrű, magasság, min_terulet) hármasok, a kisebb zóna előbb (az nyer).
+
+    QGIS-mezők: magassag (m) VAGY emelet (szintek száma), és opcionálisan
+    min_terulet (m²) – az ennél kisebb épületekre (garázs, fészer) nem vonatkozik.
+    """
     zones = []
     for feat in features:
         props = feat.get("properties") or {}
@@ -35,12 +40,13 @@ def load_zones(features, origin):
             h = floors * 3.2 if floors else None
         if h is None:
             continue
+        min_area = _num(props.get("min_terulet")) or 0.0
         for rings in geo.iter_polygons(feat["geometry"]):
             ring = geo.shift(geo.clean_ring(rings[0]), origin)
             if len(ring) >= 3:
-                zones.append((abs(geo.signed_area(ring)), ring, h))
+                zones.append((abs(geo.signed_area(ring)), ring, h, min_area))
     zones.sort(key=lambda z: z[0])
-    return [(ring, h) for _, ring, h in zones]
+    return [(ring, h, min_area) for _, ring, h, min_area in zones]
 
 
 def _bucket(area, table):
@@ -59,21 +65,22 @@ def _jitter(cx, cy, amount):
 def estimate(props, ring_local, zones, cfg):
     """Visszaad: (magasság, forrás) – a forrás a hibakereséshez hasznos."""
     cx, cy = geo.centroid(ring_local)
+    area = abs(geo.signed_area(ring_local))
 
-    for zring, h in zones:
-        if geo.point_in_ring(cx, cy, zring):
+    for zring, h, min_area in zones:
+        if area >= min_area and geo.point_in_ring(cx, cy, zring):
             return h, "zona"
 
-    h = _num(props.get("height"))
+    h = _num(props.get("height")) or _num(props.get("magassag"))
     if h:
         return h, "meres"
-    floors = _num(props.get("num_floors")) or _num(props.get("building:levels"))
+    floors = (_num(props.get("num_floors")) or _num(props.get("building:levels"))
+              or _num(props.get("emelet")))
     if floors:
         return floors * cfg.FLOOR_HEIGHT, "emelet"
 
     kind = (props.get("class") or props.get("building") or "").strip().lower()
     h = cfg.CLASS_HEIGHTS.get(kind)
-    area = abs(geo.signed_area(ring_local))
     if h is None:
         h, src = _bucket(area, cfg.AREA_HEIGHTS), "terulet"
     else:
