@@ -24,32 +24,59 @@ MIN_AREA = 4.0            # m² – ennél kisebb poligonokat kihagyjuk
 FLOOR_HEIGHT = 3.2        # m / emelet
 HEIGHT_VARIATION = 0.12   # ±12% véletlen (de futásonként azonos) eltérés
 
-# Épülettípus (OSM building / Overture class) -> magasság méterben.
-# None = alapterület alapján becsüljük.
+# A magasság mostantól a FALMAGASSÁG (eresz), a ferde tető erre jön rá.
+# Épülettípus (OSM building / Overture class) -> falmagasság méterben.
 CLASS_HEIGHTS = {
-    "shed": 2.4, "carport": 2.4, "hut": 2.5, "garage": 2.6, "garages": 2.6,
-    "roof": 3.0, "greenhouse": 3.0, "service": 3.0, "kiosk": 3.0,
-    "house": 4.5, "detached": 4.5, "semidetached_house": 4.5, "bungalow": 4.0,
-    "terrace": 5.0, "farm": 4.5, "kindergarten": 4.5,
+    "shed": 2.2, "carport": 2.2, "hut": 2.3, "garage": 2.4, "garages": 2.4,
+    "roof": 3.0, "greenhouse": 2.5, "service": 2.6, "kiosk": 2.8,
+    "house": 3.2, "detached": 3.2, "semidetached_house": 3.2, "bungalow": 3.0,
+    "terrace": 3.5, "farm": 3.2, "kindergarten": 3.5,
     "apartments": 12.0, "dormitory": 10.0,
-    "retail": 5.0, "commercial": 6.5, "supermarket": 6.0, "office": 9.0,
+    "retail": 4.5, "commercial": 6.0, "supermarket": 6.0, "office": 9.0,
     "school": 8.0, "college": 9.0, "university": 10.0, "public": 8.0,
-    "civic": 8.0, "government": 9.0, "hospital": 10.0, "train_station": 7.0,
-    "church": 14.0, "chapel": 7.0, "synagogue": 10.0, "religious": 10.0,
+    "civic": 8.0, "government": 9.0, "hospital": 10.0, "train_station": 6.0,
+    "church": 14.0, "chapel": 6.0, "synagogue": 9.0, "religious": 9.0,
     "industrial": 8.0, "warehouse": 8.0, "factory": 9.0, "manufacture": 9.0,
-    "barn": 6.0, "farm_auxiliary": 5.0, "stable": 5.0, "cowshed": 5.0,
-    "sty": 3.0, "silo": 15.0, "storage_tank": 8.0,
+    "barn": 4.5, "farm_auxiliary": 3.5, "stable": 3.5, "cowshed": 3.5,
+    "sty": 2.4, "silo": 15.0, "storage_tank": 8.0,
     "transformer_tower": 6.0, "water_tower": 22.0,
 }
 
-# Alapterület (m²) -> magasság, ha a típus ismeretlen ("yes" vagy üres)
-AREA_HEIGHTS = [      # (alapterület felső határa, magasság)
-    (20, 2.5),        # fészer, ól
-    (45, 3.2),        # garázs, nyári konyha
-    (300, 4.5),       # családi ház
-    (900, 6.5),       # nagyobb ház, üzlet, kisüzem
-    (float("inf"), 8.0),  # csarnok, gyár
+# Ezek a típusok mindig lapos tetőt kapnak (a templomok helyére később kézi modell jön)
+FLAT_ROOF_CLASSES = {
+    "apartments", "dormitory", "retail", "commercial", "supermarket", "office",
+    "industrial", "warehouse", "factory", "manufacture", "silo", "storage_tank",
+    "church", "synagogue", "religious", "water_tower", "transformer_tower",
+    "university", "college",
+}
+
+# Alapterület (m²) -> (falmagasság, tetőhajlásszög fokban; None = lapos tető)
+AREA_CLASSES = [
+    (20, 2.3, 25),             # fészer, ól
+    (45, 2.6, 30),             # garázs, nyári konyha
+    (300, 3.2, 40),            # kertes ház, kádárkocka
+    (900, 4.5, 30),            # nagy ház, pajta, üzlet
+    (float("inf"), 8.0, 25),   # nagy épület – a széles csarnokok a ROOF_MAX_WIDTH miatt laposak
 ]
+
+# ---------------------------------------------------------------- tetők
+ROOF_OVERHANG = 0.4        # m – eresz kinyúlása
+ROOF_MAX_RISE = 6.0        # m – a tető legfeljebb ennyivel magasabb a falnál
+ROOF_MAX_WIDTH = 22.0      # m – ennél szélesebb épület lapos tetőt kap
+ROOF_MIN_RECT = 0.80       # alaprajz / befoglaló téglalap aránya – ez alatt téglalapokra bontjuk
+RECTILINEAR_TOLERANCE_DEG = 12  # ennyi fokkal eltérő falakat még derékszögűnek tekintünk
+SNAP_TOLERANCE = 0.8       # m – ennél közelebbi falvonalakat összevonunk a bontásnál
+MAX_ROOF_PARTS = 6         # ennél több darabra eső alaprajz lapos tetőt kap
+ROOF_MIN_PART_WIDTH = 2.5  # m – ennél keskenyebb szárny lapos tetőt kap
+HIP_RATIO = 1.25           # hossz/szélesség ez alatt -> sátortető (kádárkocka), felette nyeregtető
+HIP_PITCH_DELTA = 8        # fok – a sátortető ennyivel laposabb a nyeregtetőnél
+FLAT_ZONE_HEIGHT = 10.0    # zónás épület e fölött lapos tetős (panel, lakópark)
+
+# Színpaletták (sRGB hex). Blenderben a "Fal" és "Teto" anyag ColorRamp-jében
+# később szabadon átírhatók – a szkript a meglévő anyagot nem írja felül.
+WALL_PALETTE = ["#EDE6D6", "#F2E3B8", "#E6CFA3", "#EBD5CC", "#D6D3CC", "#F4F1E8", "#E9DDBF"]
+ROOF_PALETTE = ["#A0522D", "#8E3B2B", "#B4653F", "#7C4A3B", "#6F6F6E", "#9B4733", "#5E5A57"]
+FLAT_ROOF_COLOR = "#7B7A76"
 
 # ---------------------------------------------------------------- vonalas elemek
 # Út szélessége (m) highway típus szerint. Ami nincs itt, azt kihagyjuk.
@@ -79,7 +106,6 @@ Z_RAIL = 0.50
 # ---------------------------------------------------------------- színek (RGBA, lineáris)
 COLORS = {
     "talaj": (0.32, 0.36, 0.22, 1.0),
-    "epulet": (0.85, 0.82, 0.76, 1.0),
     "viz": (0.12, 0.28, 0.42, 1.0),
     "ut": (0.30, 0.30, 0.30, 1.0),
     "foldut": (0.45, 0.36, 0.25, 1.0),

@@ -18,9 +18,10 @@ import config
 import geo
 import heights
 import meshgen
+import roofs
 import scene
 
-for mod in (config, geo, heights, meshgen, scene):  # újrafuttatáskor a friss kód töltődjön be
+for mod in (config, geo, heights, roofs, meshgen, scene):  # újrafuttatáskor a friss kód töltődjön be
     importlib.reload(mod)
 
 import bpy
@@ -100,10 +101,17 @@ def main():
     # Épületek – egyetlen mesh, laponként building_id / height / height_src attribútummal
     zones = heights.load_zones(load_optional("magassag_zonak"), origin)
     epuletek = geo.load_features(config.FILES["epuletek"]) + load_optional("kezi_epuletek")
-    v, f, attrs, count, stats = meshgen.buildings(epuletek, origin, zones, config, tessellate_polygon)
-    scene.mesh_object("Epuletek", v, f, coll, mat["epulet"], attrs)
+    v, f, attrs, count, stats, roof_stats = meshgen.buildings(
+        epuletek, origin, zones, config, tessellate_polygon)
+    building_mats = [
+        scene.palette_material("Fal", "rnd", config.WALL_PALETTE),
+        scene.palette_material("Teto", "rnd2", config.ROOF_PALETTE, roughness=0.7),
+        scene.material("Lapos_teto", scene.hex_to_linear(config.FLAT_ROOF_COLOR)),
+    ]
+    scene.mesh_object("Epuletek", v, f, coll, building_mats, attrs)
     print(f"Épületek: {count} ({len(v)} csúcs, {len(f)} lap)")
     print("  magasság forrása: " + ", ".join(f"{k}: {n}" for k, n in stats.most_common()))
+    print("  tetők: " + ", ".join(f"{k}: {n}" for k, n in roof_stats.most_common()))
 
     scene.ensure_sun()
     scene.ensure_camera(size)

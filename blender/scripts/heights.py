@@ -5,7 +5,8 @@ Sorrend (az első, ami ad értéket, nyer):
      min_terulet alatt nem érvényes)
   2. megadott adat: Overture `height` / kézi réteg `magassag`, majd emeletszám
   3. épülettípus (class / building mező) a config.CLASS_HEIGHTS alapján
-  4. alapterület a config.AREA_HEIGHTS alapján
+  4. alapterület a config.AREA_CLASSES alapján
+A visszaadott érték a FALMAGASSÁG – a ferde tetőt a roofs.py teszi rá.
 Végül egy kis, helyhez kötött véletlen eltérés, hogy ne legyen minden ház egyforma.
 """
 import zlib
@@ -25,11 +26,25 @@ def _num(v):
     return None
 
 
-def load_zones(features, origin):
-    """Zónák: (gyűrű, magasság, min_terulet) hármasok, a kisebb zóna előbb (az nyer).
+def _roof_override(value):
+    """A zóna `teto` mezője: lapos / nyereg / sator (ékezettel vagy anélkül)."""
+    v = (value or "").strip().lower()
+    if v.startswith("lap"):
+        return "lapos"
+    if v.startswith("nyer"):
+        return "nyereg"
+    if v.startswith(("sát", "sat")):
+        return "sator"
+    return None
 
-    QGIS-mezők: magassag (m) VAGY emelet (szintek száma), és opcionálisan
-    min_terulet (m²) – az ennél kisebb épületekre (garázs, fészer) nem vonatkozik.
+
+def load_zones(features, origin):
+    """Zónák listája, a kisebb területű elöl (az nyer).
+
+    QGIS-mezők (mind opcionális, de magassag/emelet vagy teto kell):
+      magassag (m) VAGY emelet (szintek száma) – falmagasság
+      min_terulet (m²) – az ennél kisebb épületekre (garázs, fészer) nem vonatkozik
+      teto – lapos / nyereg / sator; üresen automatikus
     """
     zones = []
     for feat in features:
@@ -38,51 +53,64 @@ def load_zones(features, origin):
         if h is None:
             floors = _num(props.get("emelet"))
             h = floors * 3.2 if floors else None
-        if h is None:
+        roof = _roof_override(props.get("teto"))
+        if h is None and roof is None:
             continue
         min_area = _num(props.get("min_terulet")) or 0.0
         for rings in geo.iter_polygons(feat["geometry"]):
             ring = geo.shift(geo.clean_ring(rings[0]), origin)
             if len(ring) >= 3:
-                zones.append((abs(geo.signed_area(ring)), ring, h, min_area))
+                zones.append((abs(geo.signed_area(ring)), ring, h, min_area, roof))
     zones.sort(key=lambda z: z[0])
-    return [(ring, h, min_area) for _, ring, h, min_area in zones]
+    return [z[1:] for z in zones]
 
 
 def _bucket(area, table):
-    for limit, h in table:
+    for limit, h, _pitch in table:
         if area < limit:
             return h
     return table[-1][1]
 
 
+def stable_random(cx, cy, salt=""):
+    """0..1 közötti, helyhez kötött „véletlen” szám (minden futásnál ugyanaz)."""
+    return (zlib.crc32(f"{salt}{cx:.0f},{cy:.0f}".encode()) % 10007) / 10007.0
+
+
 def _jitter(cx, cy, amount):
-    """Determinisztikus ±amount szorzó a hely alapján (minden futásnál ugyanaz)."""
-    seed = zlib.crc32(f"{cx:.0f},{cy:.0f}".encode())
-    return 1.0 + amount * ((seed % 2001) / 1000.0 - 1.0)
+    """Determinisztikus ±amount szorzó a hely alapján."""
+    return 1.0 + amount * (2.0 * stable_random(cx, cy, "h") - 1.0)
 
 
 def estimate(props, ring_local, zones, cfg):
-    """Visszaad: (magasság, forrás) – a forrás a hibakereséshez hasznos."""
+    """Visszaad: (falmagasság, forrás, tető-felülírás).
+
+    A forrás a hibakereséshez hasznos; a tető-felülírás a zóna `teto` mezője
+    (vagy None). A legkisebb illeszkedő zóna dönt.
+    """
     cx, cy = geo.centroid(ring_local)
     area = abs(geo.signed_area(ring_local))
 
-    for zring, h, min_area in zones:
+    roof = None
+    for zring, h, min_area, zroof in zones:
         if area >= min_area and geo.point_in_ring(cx, cy, zring):
-            return h, "zona"
+            if h is not None:
+                return h, "zona", zroof
+            roof = zroof  # csak tetőtípust ad, a magasság becslés marad
+            break
 
     h = _num(props.get("height")) or _num(props.get("magassag"))
     if h:
-        return h, "meres"
+        return h, "meres", roof
     floors = (_num(props.get("num_floors")) or _num(props.get("building:levels"))
               or _num(props.get("emelet")))
     if floors:
-        return floors * cfg.FLOOR_HEIGHT, "emelet"
+        return floors * cfg.FLOOR_HEIGHT, "emelet", roof
 
     kind = (props.get("class") or props.get("building") or "").strip().lower()
     h = cfg.CLASS_HEIGHTS.get(kind)
     if h is None:
-        h, src = _bucket(area, cfg.AREA_HEIGHTS), "terulet"
+        h, src = _bucket(area, cfg.AREA_CLASSES), "terulet"
     else:
         src = "tipus"
-    return h * _jitter(cx, cy, cfg.HEIGHT_VARIATION), src
+    return h * _jitter(cx, cy, cfg.HEIGHT_VARIATION), src, roof

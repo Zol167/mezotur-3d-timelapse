@@ -1,0 +1,24 @@
+id,nev,tipus,epites_kezdete,epites_vege,atepites,megszunes,bizonytalan,utodja,megjegyzes,forras
+templom_ref_1,Református templom – középkori (1.),templom,,1100,,1630,igen,templom_ref_2,"Az építés éve feltételezés; a törökök rombolták le, köveit a vízimalom gátjához használták",Ref. Látogatóközpont (1630)
+templom_ref_2,Református nádtemplom (2.),templom,1640,1640,,1692,igen,templom_ref_3,"Török hódoltság alatt, nádból",Ref. Látogatóközpont
+templom_ref_3,Református templom (3.),templom,1700,1705,1734 (torony),1788,igen,templom_ref_4,1705-ben a tetőzésnél félbeszakadt; torony 1734,Ref. Látogatóközpont
+templom_ref_4,"Belvárosi református nagytemplom (4., mai)",templom,1788,1792,1843-1845,,nem,,"Hacker József terve; 50×25 m, max. 51 m; 1844: falak és torony megemelése; 1944: toronysisak leégett",Ref. Látogatóközpont
+templom_kat,Katolikus templom,templom,1817,1824,,,nem,,Helyén feltehetően középkori templom állt,TODO
+templom_ref_ujvaros,Újvárosi református templom,templom,1894,1896,,,nem,,,TODO
+templom_evangelikus,Evangélikus templom,templom,1926,1926,,,nem,,,TODO
+vasut_szajol_arad,Szajol–Arad vasútvonal,vasut,1858,1858,"1974 (villamosítás); 1985, 1987 (második vágány)",,nem,,"1985: Csugar–Mezőtúr, 1987: Mezőtúr–Nagylapos kétvágányú",TODO
+vasut_mezotur_szarvas,Mezőtúr–Szarvas vasútvonal,vasut,1882,1882,,,nem,,,TODO
+vasut_mezotur_turkeve,Mezőtúr–Túrkeve vasútvonal,vasut,1885,1885,,1975,nem,,Egyvágányú,Wikipédia: Mezőtúr
+vasut_teglagyari,Téglagyári kisvasút,vasut,1912,1912,,1975,igen,,Legkorábban 1912; megszűnés éve bizonytalan,TODO
+hid_vasuti,Vasúti híd,hid,1858,1858,?,1944,igen,,A 2. világháborúban lerombolták – újjáépítés éve kell,TODO
+hid_kozuti,Közúti híd,hid,1880,1889,,,igen,,"Korábban ideiglenes hidak / rév; rendes híd a folyószabályozás idején, 1880-as évek",TODO
+iskola_ref,Református iskola / gimnázium,iskola,1530,1530,,,igen,,"1530 az intézmény alapítása – melyik épület, mikortól?",Wikipédia: Mezőtúr
+zsinagoga,Zsinagóga,zsinagoga,1830,1830,,,igen,,Évszám ellenőrizendő (1830 vagy 1835?),TODO
+tuzoltolaktanya,Tűzoltólaktanya,kozepulet,1927,1927,,,nem,,,TODO
+varoshaza_regi,Régi városháza,kozepulet,,,,1928,igen,varoshaza,"A Kossuth téren állt, a mai városháza helyén; építési éve ismeretlen",Régi fotók: Flóra-kút Facebook-csoport
+varoshaza,Városháza (mai),kozepulet,1928,1928,,,nem,,"A régi városháza helyén épült újjá, Kossuth tér",TODO
+lakotelep_ifjusagi,Ifjúsági lakótelep,lakotelep,1969,1979,,,igen,,"Magasföldszint + 3 emelet, ~13 m",TODO
+lakotelep_szabadsag_ter,Szabadság téri lakótelep,lakotelep,1970,1970,,,igen,,,TODO
+foiskola,Főiskola,iskola,1954,1954,,,nem,,,TODO
+furdo,Gőz- és kádfürdő,kozepulet,1896,1896,,1984,nem,kozossegi_haz,A mai Közösségi Ház helyén,TODO
+ilona_malom,Ilona malom,ipari,1912,1912,,2008,nem,lidl,Helyén ma Lidl áll,TODO

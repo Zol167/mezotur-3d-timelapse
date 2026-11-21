@@ -52,22 +52,75 @@ def material(name, rgba):
 
 
 def mesh_object(name, verts, faces, collection, mat=None, attributes=None):
+    """mat lehet egy anyag vagy anyagok listája; a 'material_index' attribútum
+    laponként választ közülük."""
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(verts, [], faces)
-    mesh.validate()
-    mesh.update()
-    for attr_name, values in (attributes or {}).items():
+    attributes = dict(attributes or {})
+    mat_index = attributes.pop("material_index", None)
+    if mat_index and len(mat_index) == len(mesh.polygons):
+        mesh.polygons.foreach_set("material_index", mat_index)
+    for attr_name, values in attributes.items():
         if not values or len(values) != len(mesh.polygons):
-            continue  # üres réteg, vagy a validate() eldobott hibás lapokat
+            continue
         kind = "INT" if isinstance(values[0], int) else "FLOAT"
         attr = mesh.attributes.new(attr_name, kind, "FACE")
         attr.data.foreach_set("value", values)
-    if mat:
-        mesh.materials.append(mat)
+    mesh.validate()  # az attribútumok beállítása UTÁN, hogy együtt maradjanak a lapokkal
+    mesh.update()
+    for m in (mat if isinstance(mat, (list, tuple)) else [mat] if mat else []):
+        mesh.materials.append(m)
     obj = bpy.data.objects.new(name, mesh)
     collection.objects.link(obj)
     obj.hide_select = True  # véletlenül se lehessen kézzel átírni
     return obj
+
+
+def hex_to_linear(hex_color):
+    """sRGB hex -> lineáris RGBA (a Blender anyagai lineáris színt várnak)."""
+    hex_color = hex_color.lstrip("#")
+    rgb = [int(hex_color[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
+    lin = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return (*lin, 1.0)
+
+
+def palette_material(name, attr_name, palette_hex, roughness=0.85):
+    """Anyag, ami egy 0..1 attribútum alapján egy palettából választ színt
+    (Attribute -> ColorRamp konstans módban -> Principled BSDF).
+    Ha már létezik, NEM írja felül: a ColorRamp színeit Blenderben szabadon állíthatod."""
+    mat = bpy.data.materials.get(name)
+    if mat:
+        return mat
+    mat = bpy.data.materials.new(name)
+    try:
+        mat.use_nodes = True
+    except AttributeError:
+        pass
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    bsdf.inputs["Roughness"].default_value = roughness
+
+    attr = nodes.new("ShaderNodeAttribute")
+    attr.attribute_type = "GEOMETRY"
+    attr.attribute_name = attr_name
+    attr.location = (-700, 200)
+
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.location = (-450, 200)
+    cr = ramp.color_ramp
+    cr.interpolation = "CONSTANT"
+    colors = [hex_to_linear(h) for h in palette_hex]
+    n = len(colors)
+    while len(cr.elements) < n:
+        cr.elements.new(0.5)
+    for i, el in enumerate(cr.elements):
+        el.position = i / n
+        el.color = colors[i]
+
+    links.new(attr.outputs["Fac"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    mat.diffuse_color = colors[0]  # Solid nézetben ez látszik
+    return mat
 
 
 def ensure_sun():
