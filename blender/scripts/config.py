@@ -4,7 +4,8 @@ from pathlib import Path
 # A repó gyökere (blender/scripts/config.py -> két szinttel feljebb)
 ROOT = Path(__file__).resolve().parents[2]
 EXPORT_DIR = ROOT / "data" / "export"
-OUTPUT_BLEND = ROOT / "blender" / "mezotur_generated.blend"
+MAIN_BLEND = ROOT / "blender" / "mezotur.blend"   # a fő munkafájl
+GENERATED_COLLECTION = "Generalt"                   # csak ezt írja felül a szkript
 
 # A QGIS-ből exportált GeoJSON-ok (EOV, EPSG:23700)
 FILES = {

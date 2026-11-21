@@ -1,20 +1,47 @@
-"""Blender-specifikus részek: objektumok, anyagok, fény, kamera."""
+"""Blender-specifikus részek: gyűjtemény, objektumok, anyagok, fény, kamera.
+
+Szabály: a szkript CSAK a "Generalt" gyűjteményt írja felül. Minden mást
+(kamerák, fények, kézi modellek, anyagbeállítások) békén hagy, így azokon
+szabadon dolgozhatsz Blenderben.
+"""
 import math
 
 import bpy
 
 
-def clear_scene():
-    for obj in list(bpy.data.objects):
+def is_new_file():
+    return not bpy.data.filepath
+
+
+def remove_startup_objects():
+    """Új fájlnál az alap kocka/fény/kamera eltávolítása."""
+    for name in ("Cube", "Light", "Camera"):
+        obj = bpy.data.objects.get(name)
+        if obj:
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def reset_collection(name):
+    """A gyűjtemény tartalmának törlése (a gyűjtemény maga megmarad)."""
+    coll = bpy.data.collections.get(name)
+    if coll is None:
+        coll = bpy.data.collections.new(name)
+        bpy.context.scene.collection.children.link(coll)
+    for obj in list(coll.objects):
+        data = obj.data
         bpy.data.objects.remove(obj, do_unlink=True)
-    for block in (bpy.data.meshes, bpy.data.materials, bpy.data.cameras, bpy.data.lights):
-        for item in list(block):
-            if item.users == 0:
-                block.remove(item)
+        if isinstance(data, bpy.types.Mesh) and data.users == 0:
+            bpy.data.meshes.remove(data)
+    return coll
 
 
 def material(name, rgba):
-    mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+    """Meglévő anyagot újrahasznál és NEM írja felül – Blenderben szabadon állíthatod.
+    Csak akkor kap alapszínt, ha most jön létre."""
+    mat = bpy.data.materials.get(name)
+    if mat:
+        return mat
+    mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     if bsdf:
@@ -24,7 +51,7 @@ def material(name, rgba):
     return mat
 
 
-def mesh_object(name, verts, faces, mat=None, attributes=None):
+def mesh_object(name, verts, faces, collection, mat=None, attributes=None):
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(verts, [], faces)
     mesh.validate()
@@ -38,11 +65,15 @@ def mesh_object(name, verts, faces, mat=None, attributes=None):
     if mat:
         mesh.materials.append(mat)
     obj = bpy.data.objects.new(name, mesh)
-    bpy.context.scene.collection.objects.link(obj)
+    collection.objects.link(obj)
+    obj.hide_select = True  # véletlenül se lehessen kézzel átírni
     return obj
 
 
-def add_sun():
+def ensure_sun():
+    """Napfény – csak ha még nincs, a meglévőt nem bántja."""
+    if bpy.data.objects.get("Nap"):
+        return
     light = bpy.data.lights.new("Nap", type="SUN")
     light.energy = 3.0
     light.angle = math.radians(2)
@@ -51,8 +82,10 @@ def add_sun():
     bpy.context.scene.collection.objects.link(obj)
 
 
-def add_camera(size_m):
-    """Ferde madártávlati kamera délkelet felől, a terület közepére nézve."""
+def ensure_camera(size_m):
+    """Áttekintő kamera – csak ha még nincs."""
+    if bpy.data.objects.get("Kamera"):
+        return
     target = bpy.data.objects.new("Kamera_cel", None)
     bpy.context.scene.collection.objects.link(target)
 
@@ -71,9 +104,9 @@ def add_camera(size_m):
     bpy.context.scene.camera = cam
 
 
-def setup_render():
+def initial_render_setup():
+    """Csak új fájlnál – utána a render-beállítás a te dolgod."""
     scene = bpy.context.scene
-    # Az Eevee belső neve verziónként eltér (4.2–4.x: BLENDER_EEVEE_NEXT)
     for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
         try:
             scene.render.engine = engine

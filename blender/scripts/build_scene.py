@@ -1,8 +1,12 @@
 """Mezőtúr 3D jelenet felépítése a QGIS-exportokból.
 
-Futtatás a repó gyökeréből:
-    blender --python blender/scripts/build_scene.py          # megnyitja a Blendert a kész jelenettel
-    blender -b --python blender/scripts/build_scene.py       # háttérben, csak elmenti a .blend-et
+A szkript CSAK a "Generalt" gyűjteményt építi újra, minden más (kamerák, fények,
+kézi modellek, anyagok) megmarad a fájlban.
+
+Első futtatás (még nincs blender/mezotur.blend):
+    blender --python blender/scripts/build_scene.py
+Utána mindig a meglévő fájllal:
+    blender blender/mezotur.blend --python blender/scripts/build_scene.py
 """
 import importlib
 import sys
@@ -40,7 +44,17 @@ def is_unpaved(p):
 
 
 def main():
-    scene.clear_scene()
+    if scene.is_new_file():
+        if config.MAIN_BLEND.exists():
+            raise SystemExit(
+                f"\n!!! {config.MAIN_BLEND} már létezik – nem írom felül.\n"
+                f"    Futtasd így: blender {config.MAIN_BLEND.relative_to(config.ROOT)} "
+                f"--python blender/scripts/build_scene.py\n"
+            )
+        scene.remove_startup_objects()
+        scene.initial_render_setup()
+
+    coll = scene.reset_collection(config.GENERATED_COLLECTION)
 
     # Terület és origó
     terulet = geo.load_features(config.FILES["terulet"])
@@ -54,50 +68,49 @@ def main():
 
     # Talaj
     v, f = geo.flat_polygons(terulet, origin, config.Z_GROUND)
-    scene.mesh_object("Talaj", v, f, mat["talaj"])
+    scene.mesh_object("Talaj", v, f, coll, mat["talaj"])
 
     # Víz: felületek + vonalas vízfolyások
     v, f = geo.flat_polygons(load_optional("vizfeluletek"), origin, config.Z_WATER, min_area=10)
-    scene.mesh_object("Vizfeluletek", v, f, mat["viz"])
+    scene.mesh_object("Vizfeluletek", v, f, coll, mat["viz"])
     v, f, n = meshgen.ribbons(
         load_optional("vizfolyasok"), origin, config.Z_WATERWAY,
         lambda p: None if p.get("tunnel") in ("culvert", "yes")
         else config.WATERWAY_WIDTHS.get(p.get("waterway")),
     )
-    scene.mesh_object("Vizfolyasok", v, f, mat["viz"])
+    scene.mesh_object("Vizfolyasok", v, f, coll, mat["viz"])
     print(f"Vízfolyások: {n}")
 
     # Utak – szilárd burkolatú és földút külön objektumban
     utak = load_optional("utak")
     v, f, n1 = meshgen.ribbons(utak, origin, config.Z_ROAD,
                                lambda p: None if is_unpaved(p) else road_width(p))
-    scene.mesh_object("Utak", v, f, mat["ut"])
+    scene.mesh_object("Utak", v, f, coll, mat["ut"])
     v, f, n2 = meshgen.ribbons(utak, origin, config.Z_ROAD_DIRT,
                                lambda p: road_width(p) if is_unpaved(p) else None)
-    scene.mesh_object("Foldutak", v, f, mat["foldut"])
+    scene.mesh_object("Foldutak", v, f, coll, mat["foldut"])
     print(f"Utak: {n1} szilárd, {n2} földút")
 
     # Vasút – csak a működő vonalak (a megszűntek majd az idővonalhoz kellenek)
     v, f, n = meshgen.ribbons(load_optional("vasut"), origin, config.Z_RAIL,
                               lambda p: config.RAIL_WIDTHS.get(p.get("railway")))
-    scene.mesh_object("Vasut", v, f, mat["vasut"])
+    scene.mesh_object("Vasut", v, f, coll, mat["vasut"])
     print(f"Vasútvonal-szakaszok: {n}")
 
     # Épületek – egyetlen mesh, laponként building_id / height / height_src attribútummal
     zones = heights.load_zones(load_optional("magassag_zonak"), origin)
     epuletek = geo.load_features(config.FILES["epuletek"]) + load_optional("kezi_epuletek")
     v, f, attrs, count, stats = meshgen.buildings(epuletek, origin, zones, config, tessellate_polygon)
-    scene.mesh_object("Epuletek", v, f, mat["epulet"], attrs)
+    scene.mesh_object("Epuletek", v, f, coll, mat["epulet"], attrs)
     print(f"Épületek: {count} ({len(v)} csúcs, {len(f)} lap)")
     print("  magasság forrása: " + ", ".join(f"{k}: {n}" for k, n in stats.most_common()))
 
-    scene.add_sun()
-    scene.add_camera(size)
-    scene.setup_render()
+    scene.ensure_sun()
+    scene.ensure_camera(size)
     scene.fix_viewport_clipping(size)
 
-    bpy.ops.wm.save_as_mainfile(filepath=str(config.OUTPUT_BLEND))
-    print(f"Mentve: {config.OUTPUT_BLEND}")
+    bpy.ops.wm.save_as_mainfile(filepath=str(config.MAIN_BLEND))
+    print(f"Mentve: {config.MAIN_BLEND}")
 
 
 main()
