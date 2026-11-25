@@ -100,7 +100,11 @@ def main():
 
     # Épületek – egyetlen mesh, laponként building_id / height / height_src attribútummal
     zones = heights.load_zones(load_optional("magassag_zonak"), origin)
-    epuletek = geo.load_features(config.FILES["epuletek"]) + load_optional("kezi_epuletek")
+    kezi = load_optional("kezi_epuletek")
+    auto, dropped = geo.replace_with_manual(geo.load_features(config.FILES["epuletek"]), kezi)
+    epuletek = auto + kezi
+    if kezi:
+        print(f"Kézi épületek: {len(kezi)}, ezek {dropped} automatikus épületet váltottak ki")
     v, f, attrs, count, stats, roof_stats = meshgen.buildings(
         epuletek, origin, zones, config, tessellate_polygon)
     building_mats = [

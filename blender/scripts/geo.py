@@ -152,3 +152,24 @@ def _seg_normal(a, b):
     dx, dy = b[0] - a[0], b[1] - a[1]
     length = math.hypot(dx, dy) or 1.0
     return -dy / length, dx / length
+
+
+def replace_with_manual(auto_features, manual_features):
+    """A kézi épületek felülírják az automatikusakat: minden olyan automatikus
+    épület kimarad, amelynek középpontja valamelyik kézi poligonba esik.
+    Visszaad: (megtartott automatikus épületek, kihagyottak száma)."""
+    manual_rings = [clean_ring(r[0]) for f in manual_features for r in iter_polygons(f["geometry"])]
+    manual_rings = [r for r in manual_rings if len(r) >= 3]
+    if not manual_rings:
+        return auto_features, 0
+    kept, dropped = [], 0
+    for feat in auto_features:
+        rings = next(iter_polygons(feat["geometry"]), None)
+        ring = clean_ring(rings[0]) if rings else []
+        if len(ring) >= 3:
+            cx, cy = centroid(ring)
+            if any(point_in_ring(cx, cy, m) for m in manual_rings):
+                dropped += 1
+                continue
+        kept.append(feat)
+    return kept, dropped
